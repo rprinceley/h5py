@@ -265,8 +265,8 @@ def autodetect_version(libdirs):
         regexp = re.compile(r'^libhdf5.dylib')
     elif sys.platform.startswith('win') or \
         sys.platform.startswith('cygwin'):
-        default_path = 'hdf5.dll'
-        regexp = re.compile(r'^hdf5.dll')
+        default_path = 'hdf5_e.dll'
+        regexp = re.compile(r'^hdf5_e.dll')
     else:
         default_path = 'libhdf5.so'
         regexp = re.compile(r'^libhdf5.so')
@@ -282,6 +282,19 @@ def autodetect_version(libdirs):
             candidates.sort(key=lambda x: len(x))   # Prefer libfoo.so to libfoo.so.X.Y.Z
             path = op.abspath(op.join(d, candidates[0]))
             break
+
+    if sys.platform == 'win32' and 'PATH' in os.environ:
+        path_list = os.environ['PATH'].split(';')
+        for d in path_list:
+            try:
+                candidates = [x for x in os.listdir(d) if regexp.match(x)]
+            except Exception:
+                continue   # Skip invalid entries
+
+            if len(candidates) != 0:
+                candidates.sort(key=lambda x: len(x))   # Prefer libfoo.so to libfoo.so.X.Y.Z
+                path = op.abspath(op.join(d, candidates[0]))
+                break
 
     if path is None:
         path = default_path
