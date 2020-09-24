@@ -58,6 +58,7 @@ def _set_fapl_fileobj(plist, **kwargs):
 _drivers = {
     'sec2': lambda plist, **kwargs: plist.set_fapl_sec2(**kwargs),
     'stdio': lambda plist, **kwargs: plist.set_fapl_stdio(**kwargs),
+    'vsil': lambda plist, **kwargs: plist.set_fapl_vsil(**kwargs),
     'core': lambda plist, **kwargs: plist.set_fapl_core(**kwargs),
     'family': lambda plist, **kwargs: plist.set_fapl_family(
         memb_fapl=plist.copy(),
@@ -244,6 +245,7 @@ class File(Group):
         """Low-level HDF5 file driver used to open file"""
         drivers = {h5fd.SEC2: 'sec2',
                    h5fd.STDIO: 'stdio',
+                   h5fd.VSIL: 'vsil',
                    h5fd.CORE: 'core',
                    h5fd.FAMILY: 'family',
                    h5fd.WINDOWS: 'windows',
@@ -329,7 +331,7 @@ class File(Group):
             a        Read/write if exists, create otherwise
         driver
             Name of the driver to use.  Legal values are None (default,
-            recommended), 'core', 'sec2', 'stdio', 'mpio'.
+            recommended), 'core', 'sec2', 'stdio', 'vsil', 'mpio'.
         libver
             Library version bounds.  Supported values: 'earliest', 'v108',
             'v110', 'v112'  and 'latest'. The 'v108', 'v110' and 'v112'
