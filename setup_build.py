@@ -35,7 +35,7 @@ EXTRA_SRC = {'h5z': [ localpath("lzf/lzf_filter.c"),
               localpath("lzf/lzf/lzf_d.c")]}
 
 COMPILER_SETTINGS = {
-   'libraries'      : ['hdf5', 'hdf5_hl'],
+   'libraries'      : ['hdf5_e', 'hdf5_hl_e'],
    'include_dirs'   : [localpath('lzf')],
    'library_dirs'   : [],
    'define_macros'  : [('H5_USE_18_API', None),
