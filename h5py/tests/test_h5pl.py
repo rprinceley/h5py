@@ -16,13 +16,13 @@ from h5py.tests.common import insubprocess, subproc_env
 
 # pytestmark is a special name - the skipif marker applies to the whole file
 pytestmark = pytest.mark.skipif(
-    True, reason='Esri build of HDF5 has it\' own loading mechanism.'
+    h5py.version.hdf5_version_tuple < (1, 10, 1), reason='HDF5 1.10.1+ required'
 )
 
 
 @pytest.mark.mpi_skip
 @insubprocess
-@subproc_env({'HDF5_PLUGIN_PATH': 'h5py_plugin_test'})
+@subproc_env({'GDAL_DRIVER_PATH': 'h5py_plugin_test'})
 def test_default(request):
     assert h5pl.size() == 1
     assert h5pl.get(0) == b'h5py_plugin_test'
@@ -30,7 +30,7 @@ def test_default(request):
 
 @pytest.mark.mpi_skip
 @insubprocess
-@subproc_env({'HDF5_PLUGIN_PATH': 'h5py_plugin_test'})
+@subproc_env({'GDAL_DRIVER_PATH': 'h5py_plugin_test'})
 def test_append(request):
     h5pl.append(b'/opt/hdf5/vendor-plugin')
     assert h5pl.size() == 2
@@ -40,7 +40,7 @@ def test_append(request):
 
 @pytest.mark.mpi_skip
 @insubprocess
-@subproc_env({'HDF5_PLUGIN_PATH': 'h5py_plugin_test'})
+@subproc_env({'GDAL_DRIVER_PATH': 'h5py_plugin_test'})
 def test_prepend(request):
     h5pl.prepend(b'/opt/hdf5/vendor-plugin')
     assert h5pl.size() == 2
@@ -50,7 +50,7 @@ def test_prepend(request):
 
 @pytest.mark.mpi_skip
 @insubprocess
-@subproc_env({'HDF5_PLUGIN_PATH': 'h5py_plugin_test'})
+@subproc_env({'GDAL_DRIVER_PATH': 'h5py_plugin_test'})
 def test_insert(request):
     h5pl.insert(b'/opt/hdf5/vendor-plugin', 0)
     assert h5pl.size() == 2
@@ -60,7 +60,7 @@ def test_insert(request):
 
 @pytest.mark.mpi_skip
 @insubprocess
-@subproc_env({'HDF5_PLUGIN_PATH': 'h5py_plugin_test'})
+@subproc_env({'GDAL_DRIVER_PATH': 'h5py_plugin_test'})
 def test_replace(request):
     h5pl.replace(b'/opt/hdf5/vendor-plugin', 0)
     assert  h5pl.size() == 1
