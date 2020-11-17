@@ -36,11 +36,14 @@ if hdf5_version >= h5.get_config().swmr_min_hdf5_version:
 
 
 libver_dict = {'earliest': h5f.LIBVER_EARLIEST, 'latest': h5f.LIBVER_LATEST}
-libver_dict_r = dict((y, x) for x, y in six.iteritems(libver_dict))
+libver_dict_r = dict((y, x) for x, y in libver_dict.items())
 if hdf5_version >= (1, 10, 2):
     libver_dict.update({'v108': h5f.LIBVER_V18, 'v110': h5f.LIBVER_V110})
     libver_dict_r.update({h5f.LIBVER_V18: 'v108', h5f.LIBVER_V110: 'v110'})
 
+if hdf5_version >= (1, 11, 4):
+    libver_dict.update({'v112': h5f.LIBVER_V112})
+    libver_dict_r.update({h5f.LIBVER_V112: 'v112'})
 
 def _set_fapl_mpio(plist, **kwargs):
     import mpi4py
@@ -55,6 +58,7 @@ def _set_fapl_fileobj(plist, **kwargs):
 _drivers = {
     'sec2': lambda plist, **kwargs: plist.set_fapl_sec2(**kwargs),
     'stdio': lambda plist, **kwargs: plist.set_fapl_stdio(**kwargs),
+    'vsil': lambda plist, **kwargs: plist.set_fapl_vsil(**kwargs),
     'core': lambda plist, **kwargs: plist.set_fapl_core(**kwargs),
     'family': lambda plist, **kwargs: plist.set_fapl_family(
         memb_fapl=plist.copy(),
@@ -244,6 +248,7 @@ class File(Group):
         """Low-level HDF5 file driver used to open file"""
         drivers = {h5fd.SEC2: 'sec2',
                    h5fd.STDIO: 'stdio',
+                   h5fd.VSIL: 'vsil',
                    h5fd.CORE: 'core',
                    h5fd.FAMILY: 'family',
                    h5fd.WINDOWS: 'windows',

@@ -14,6 +14,15 @@
 
 from __future__ import absolute_import
 
+# Required when running with HDF/GDAL DLLs in path.
+from sys import platform, version_info
+if version_info >= (3, 8, 0) and platform == 'win32':
+    import os
+    if 'PATH' in os.environ:
+        for p in os.environ['PATH'].split(';'):
+            if p and os.path.exists(p):
+                os.add_dll_directory(p)
+
 from warnings import warn as _warn
 
 

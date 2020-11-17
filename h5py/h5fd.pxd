@@ -37,6 +37,7 @@ cdef extern from "hdf5.h":
   hid_t H5FD_MULTI
   hid_t H5FD_SEC2
   hid_t H5FD_STDIO
+  hid_t H5FD_VSIL
   IF UNAME_SYSNAME == "Windows":
     hid_t H5FD_WINDOWS
   hid_t H5FD_MPIO_COLLECTIVE

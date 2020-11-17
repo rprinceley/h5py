@@ -155,6 +155,11 @@ cdef class Reference:
         The object's truth value indicates whether it contains a nonzero
         reference.  This does not guarantee that is valid, but is useful
         for rejecting "background" elements in a dataset.
+
+        Defined attributes:
+          cdef ref_u ref
+          cdef readonly int typecode
+          cdef readonly size_t typesize
     """
 
     def __cinit__(self, *args, **kwds):
@@ -163,7 +168,7 @@ cdef class Reference:
 
     def __nonzero__(self):
         cdef int i
-        for i from 0<=i<self.typesize:
+        for i in range(self.typesize):
             if (<unsigned char*>&self.ref)[i] != 0: return True
         return False
 

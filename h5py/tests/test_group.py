@@ -244,14 +244,14 @@ class TestOpen(BaseGroup):
 
         ref = h5py.h5r.Reference()
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, KeyError)):
             self.f[ref]
 
         self.f.create_group('x')
         ref = self.f['x'].ref
         del self.f['x']
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, KeyError)):
             self.f[ref]
 
     # TODO: check that regionrefs also work with __getitem__

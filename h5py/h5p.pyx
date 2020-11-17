@@ -1036,6 +1036,14 @@ cdef class PropFAID(PropInstanceID):
         """
         H5Pset_fapl_stdio(self.id)
 
+    @with_phil
+    def set_fapl_vsil(self):
+        """()
+
+        Select the "VSIL" driver (h5fd.STDIO)
+        """
+        H5Pset_fapl_vsil(self.id)
+
 
     @with_phil
     def set_driver(self, hid_t driver_id):

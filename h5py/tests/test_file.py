@@ -333,7 +333,7 @@ class TestNewLibver(TestCase):
         super(TestNewLibver, cls).setUpClass()
 
         # Current latest library bound label
-        cls.latest = 'v110'
+        cls.latest = 'v112'
 
     def test_default(self):
         """ Opening with no libver arg """
