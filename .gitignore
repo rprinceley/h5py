@@ -29,3 +29,5 @@ MANIFEST
 
 # Rever
 rever/
+/python/Lib/
+/python/Scripts/
