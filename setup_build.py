@@ -43,13 +43,17 @@ FALLBACK_PATHS = {
 }
 
 COMPILER_SETTINGS = {
-   'libraries'      : ['hdf5', 'hdf5_hl'],
+   'libraries'      : ['hdf5_e', 'hdf5_hl_e'],
    'include_dirs'   : [localpath('lzf')],
    'library_dirs'   : [],
    'define_macros'  : [('H5_USE_16_API', None)]
 }
 
 if sys.platform.startswith('win'):
+    if os.getenv('HDF5_INCLUDEDIR') is not None:
+        COMPILER_SETTINGS['include_dirs'].append(os.getenv('HDF5_INCLUDEDIR'))
+    if os.getenv('HDF5_LIBDIR') is not None:
+        COMPILER_SETTINGS['library_dirs'].append(os.getenv('HDF5_LIBDIR'))
     COMPILER_SETTINGS['include_dirs'].append(localpath('windows'))
     COMPILER_SETTINGS['define_macros'].extend([
         ('_HDF5USEDLL_', None),
