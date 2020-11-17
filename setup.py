@@ -22,18 +22,19 @@ if '' not in sys.path:
 import setup_build, setup_configure
 
 
-VERSION = '2.10.0'
+VERSION = '3.1.0'
 
 # Minimum supported versions of Numpy & Cython depend on the Python version
 NUMPY_MIN_VERSIONS = [
     # Numpy    Python
     ('1.12',   "=='3.6'"),
     ('1.14.5', "=='3.7'"),
-    ('1.17.4', ">='3.8'"),
+    ('1.17.5', "=='3.8'"),
+    ('1.19.3', ">='3.9'"),
 ]
 
 # these are required to use h5py
-RUN_REQUIRES = ["cached-property"] + [
+RUN_REQUIRES = ["cached-property; python_version<'3.8'"] + [
     f"numpy >={np_min}; python_version{py_condition}"
     for np_min, py_condition in NUMPY_MIN_VERSIONS
 ]
@@ -55,7 +56,7 @@ SETUP_REQUIRES = [
 if setup_configure.mpi_enabled():
     RUN_REQUIRES.append('mpi4py >=3.0.0')
     SETUP_REQUIRES.append("mpi4py ==3.0.0; python_version<'3.8'")
-    SETUP_REQUIRES.append("mpi4py >=3.0.3; python_version>='3.8'")
+    SETUP_REQUIRES.append("mpi4py ==3.0.3; python_version>='3.8'")
 
 # Set the environment variable H5PY_SETUP_REQUIRES=0 if we need to skip
 # setup_requires for any reason.
@@ -106,7 +107,6 @@ class test(Command):
 
 
 CMDCLASS = {'build_ext': setup_build.h5py_build_ext,
-            'configure': setup_configure.configure,
             'test': test, }
 
 
