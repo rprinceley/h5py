@@ -277,7 +277,9 @@ class HDF5LibWrapper:
         return True
 
     def has_mpi_support(self):
-        return self.has_functions("H5Pget_fapl_mpio", "H5Pset_fapl_mpio")
+        return False
+        # return self.has_functions("H5Pget_fapl_mpio", "H5Pset_fapl_mpio")
 
     def has_ros3_support(self):
-        return self.has_functions("H5Pget_fapl_ros3", "H5Pset_fapl_ros3")
+        return False
+        # return self.has_functions("H5Pget_fapl_ros3", "H5Pset_fapl_ros3")
