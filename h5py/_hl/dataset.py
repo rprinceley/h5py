@@ -2,7 +2,7 @@
 #
 # http://www.h5py.org
 #
-# Copyright 2008-2013 Andrew Collette and contributors
+# Copyright 2008-2020 Andrew Collette and contributors
 #
 # License:  Standard 3-clause BSD; see "license.txt" for full license terms
 #           and contributor agreement.
@@ -17,12 +17,14 @@ except ImportError:
     from cached_property import cached_property
 import posixpath as pp
 import sys
+from warnings import warn
 
 from threading import local
 
 import numpy
 
 from .. import h5, h5s, h5t, h5r, h5d, h5p, h5fd, h5ds, _selector
+from ..h5py_warnings import H5pyDeprecationWarning
 from .base import HLObject, phil, with_phil, Empty, find_item_type
 from . import filters
 from . import selections as sel
@@ -38,7 +40,7 @@ MPI = h5.get_config().mpi
 def make_new_dset(parent, shape=None, dtype=None, data=None, name=None,
                   chunks=None, compression=None, shuffle=None,
                   fletcher32=None, maxshape=None, compression_opts=None,
-                  fillvalue=None, scaleoffset=None, track_times=None,
+                  fillvalue=None, scaleoffset=None, track_times=False,
                   external=None, track_order=None, dcpl=None,
                   allow_unknown_filter=False):
     """ Return a new low-level dataset identifier """
@@ -113,9 +115,12 @@ def make_new_dset(parent, shape=None, dtype=None, data=None, name=None,
         fillvalue = numpy.array(fillvalue)
         dcpl.set_fill_value(fillvalue)
 
+    if track_times is None:
+        # In case someone explicitly passes None for the default
+        track_times = False
     if track_times in (True, False):
         dcpl.set_obj_track_times(track_times)
-    elif track_times is not None:
+    else:
         raise TypeError("track_times must be either True or False")
     if track_order is True:
         dcpl.set_attr_creation_order(
@@ -142,34 +147,6 @@ def make_new_dset(parent, shape=None, dtype=None, data=None, name=None,
     return dset_id
 
 
-def make_new_virtual_dset(parent, shape, sources, dtype, name=None,
-                          maxshape=None, fillvalue=None):
-    """ Return a new low-level dataset identifier for a virtual dataset """
-
-    # create the creation property list
-    dcpl = h5p.create(h5p.DATASET_CREATE)
-    if fillvalue is not None:
-        dcpl.set_fill_value(numpy.array([fillvalue]))
-
-    if maxshape is not None:
-        maxshape = tuple(m if m is not None else h5s.UNLIMITED for m in maxshape)
-
-    virt_dspace = h5s.create_simple(shape, maxshape)
-
-    for vspace, fpath, dset, src_dspace in sources:
-        dcpl.set_virtual(vspace, fpath, dset, src_dspace)
-
-    if isinstance(dtype, Datatype):
-        # Named types are used as-is
-        tid = dtype.id
-    else:
-        dtype = numpy.dtype(dtype)
-        tid = h5t.py_create(dtype, logical=1)
-
-    return h5d.create(parent.id, name=name, tid=tid, space=virt_dspace,
-                      dcpl=dcpl)
-
-
 class AstypeWrapper(object):
     """Wrapper to convert data on reading from a dataset.
     """
@@ -182,6 +159,11 @@ class AstypeWrapper(object):
 
     def __enter__(self):
         # pylint: disable=protected-access
+        warn(
+            "Using astype() as a context manager is deprecated. "
+            "Slice the returned object instead, like: ds.astype(np.int32)[:10]",
+            category=H5pyDeprecationWarning, stacklevel=2,
+        )
         self._dset._local.astype = self._dtype
         return self
 
@@ -189,18 +171,25 @@ class AstypeWrapper(object):
         # pylint: disable=protected-access
         self._dset._local.astype = None
 
+    def __len__(self):
+        """ Get the length of the underlying dataset
+
+        >>> length = len(dataset.astype('f8'))
+        """
+        return len(self._dset)
+
 
 class AsStrWrapper:
     """Wrapper to decode strings on reading the dataset"""
     def __init__(self, dset, encoding, errors='strict'):
-        self.dset = dset
+        self._dset = dset
         if encoding is None:
             encoding = h5t.check_string_dtype(dset.dtype).encoding
         self.encoding = encoding
         self.errors = errors
 
     def __getitem__(self, args):
-        bytes_arr = self.dset[args]
+        bytes_arr = self._dset[args]
         # numpy.char.decode() seems like the obvious thing to use. But it only
         # accepts numpy string arrays, not object arrays of bytes (which we
         # return from HDF5 variable-length strings). And the numpy
@@ -214,23 +203,37 @@ class AsStrWrapper:
             b.decode(self.encoding, self.errors) for b in bytes_arr.flat
         ], dtype=object).reshape(bytes_arr.shape)
 
+    def __len__(self):
+        """ Get the length of the underlying dataset
+
+        >>> length = len(dataset.asstr())
+        """
+        return len(self._dset)
+
 
 class FieldsWrapper:
     """Wrapper to extract named fields from a dataset with a struct dtype"""
     extract_field = None
 
     def __init__(self, dset, prior_dtype, names):
-        self.dset = dset
+        self._dset = dset
         if isinstance(names, str):
             self.extract_field = names
             names = [names]
         self.read_dtype = readtime_dtype(prior_dtype, names)
 
     def __getitem__(self, args):
-        data = self.dset.__getitem__(args, new_dtype=self.read_dtype)
+        data = self._dset.__getitem__(args, new_dtype=self.read_dtype)
         if self.extract_field is not None:
             data = data[self.extract_field]
         return data
+
+    def __len__(self):
+        """ Get the length of the underlying dataset
+
+        >>> length = len(dataset.fields(['x', 'y']))
+        """
+        return len(self._dset)
 
 
 def readtime_dtype(basetype, names):
@@ -764,7 +767,10 @@ class Dataset(HLObject):
         if self.shape == ():
             fspace = self.id.get_space()
             selection = sel2.select_read(fspace, args)
-            arr = numpy.ndarray(selection.mshape, dtype=new_dtype)
+            if selection.mshape is None:
+                arr = numpy.ndarray((), dtype=new_dtype)
+            else:
+                arr = numpy.ndarray(selection.mshape, dtype=new_dtype)
             for mspace, fspace in selection:
                 self.id.read(mspace, fspace, arr, mtype)
             if selection.mshape is None:
@@ -829,7 +835,7 @@ class Dataset(HLObject):
         elif self.dtype.kind == "O" or \
           (self.dtype.kind == 'V' and \
           (not isinstance(val, numpy.ndarray) or val.dtype.kind != 'V') and \
-          (self.dtype.subdtype == None)):
+          (self.dtype.subdtype is None)):
             if len(names) == 1 and self.dtype.fields is not None:
                 # Single field selected for write, from a non-array source
                 if not names[0] in self.dtype.fields:
@@ -930,8 +936,8 @@ class Dataset(HLObject):
         if mshape == () and selection.array_shape != ():
             if self.dtype.subdtype is not None:
                 raise TypeError("Scalar broadcasting is not supported for array dtypes")
-            if self.chunks and (numpy.prod(self.chunks, dtype=numpy.float) >=
-                                numpy.prod(selection.array_shape, dtype=numpy.float)):
+            if self.chunks and (numpy.prod(self.chunks, dtype=numpy.float64) >=
+                                numpy.prod(selection.array_shape, dtype=numpy.float64)):
                 val2 = numpy.empty(selection.array_shape, dtype=val.dtype)
             else:
                 val2 = numpy.empty(selection.array_shape[-1], dtype=val.dtype)
@@ -964,9 +970,9 @@ class Dataset(HLObject):
             if dest_sel is None:
                 dest_sel = sel.SimpleSelection(dest.shape)
             else:
-                dest_sel = sel.select(dest.shape, dest_sel, self)
+                dest_sel = sel.select(dest.shape, dest_sel)
 
-            for mspace in dest_sel.broadcast(source_sel.mshape):
+            for mspace in dest_sel.broadcast(source_sel.array_shape):
                 self.id.read(mspace, fspace, dest, dxpl=self._dxpl)
 
     def write_direct(self, source, source_sel=None, dest_sel=None):
@@ -983,7 +989,7 @@ class Dataset(HLObject):
             if source_sel is None:
                 source_sel = sel.SimpleSelection(source.shape)
             else:
-                source_sel = sel.select(source.shape, source_sel, self)  # for numpy.s_
+                source_sel = sel.select(source.shape, source_sel)  # for numpy.s_
             mspace = source_sel.id
 
             if dest_sel is None:
@@ -991,7 +997,7 @@ class Dataset(HLObject):
             else:
                 dest_sel = sel.select(self.shape, dest_sel, self)
 
-            for fspace in dest_sel.broadcast(source_sel.mshape):
+            for fspace in dest_sel.broadcast(source_sel.array_shape):
                 self.id.write(mspace, fspace, source, dxpl=self._dxpl)
 
     @with_phil

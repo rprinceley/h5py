@@ -8,7 +8,7 @@ variables:
 jobs:
 - job: 'static_checks'
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: ubuntu-20.04
   variables:
     TOXENV: docs,checkreadme,pre-commit,rever
   steps:
@@ -25,10 +25,10 @@ jobs:
 
 - job: 'linux_wheels'
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: ubuntu-20.04
   variables:
-    CIBW_BUILD: cp3[6789]-manylinux_x86_64
-    CIBW_MANYLINUX_X86_64_IMAGE: docker.io/h5py/manylinux2010_x86_64-hdf5
+    CIBW_BUILD: cp3{7,8,9,10}-manylinux_x86_64
+    CIBW_MANYLINUX_X86_64_IMAGE: ghcr.io/h5py/manylinux2010_x86_64-hdf5
     # Include less debugging info for smaller wheels (default is -g2)
     CIBW_ENVIRONMENT: "CFLAGS=-g1"
   steps:
@@ -38,12 +38,12 @@ jobs:
 
 - job: 'windows_wheels'
   pool:
-    vmImage: vs2017-win2016
+    vmImage: windows-2019
   variables:
-    HDF5_VERSION: 1.12.0
+    HDF5_VERSION: 1.12.1
     HDF5_DIR: $(HDF5_CACHE_DIR)/$(HDF5_VERSION)
     HDF5_VSVERSION: "15-64"
-    CIBW_BUILD: cp3[6789]-win_amd64
+    CIBW_BUILD: cp3{7,8,9,10}-win_amd64
   steps:
     - template: ci/azure-pipelines-wheels.yml
       parameters:
@@ -54,9 +54,9 @@ jobs:
     vmImage: macOS-10.15
   variables:
     MACOSX_DEPLOYMENT_TARGET: 10.9
-    HDF5_VERSION: 1.12.0
+    HDF5_VERSION: 1.12.1
     HDF5_DIR: $(HDF5_CACHE_DIR)/$(HDF5_VERSION)
-    CIBW_BUILD: cp3[6789]-macosx_x86_64
+    CIBW_BUILD: cp3{7,8,9,10}-macosx_x86_64
   steps:
     - template: ci/azure-pipelines-wheels.yml
       parameters:
@@ -64,7 +64,7 @@ jobs:
 
 - job: 'ubuntu1604'
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: ubuntu-20.04
   strategy:
     matrix:
       # -deps : test with default (latest) versions of dependencies
@@ -114,13 +114,13 @@ jobs:
         HDF5_DIR: $(HDF5_CACHE_DIR)/$(HDF5_VERSION)
         H5PY_ENFORCE_COVERAGE: yes
     # do mpi tests
-#      py37-deps-hdf51105-mpi:
-#        python.version: '3.7'
-#        TOXENV: py37-test-mindeps-mpi4py
-#        HDF5_VERSION: 1.10.5
-#        HDF5_DIR: $(HDF5_CACHE_DIR)/$(HDF5_VERSION)
-#        HDF5_MPI: ON
-#        CC: mpicc
+      py37-deps-hdf51105-mpi:
+        python.version: '3.7'
+        TOXENV: py37-test-mindeps-mpi4py
+        HDF5_VERSION: 1.10.5
+        HDF5_DIR: $(HDF5_CACHE_DIR)/$(HDF5_VERSION)
+        HDF5_MPI: ON
+        CC: mpicc
     maxParallel: 4
 
   steps:
@@ -135,28 +135,28 @@ jobs:
 - job: 'test_linux_wheels'
   dependsOn: linux_wheels
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: ubuntu-20.04
   variables:
     H5PY_TEST_CHECK_FILTERS: 1
 
   strategy:
     matrix:
-      py36:
-        python.version: '3.6'
-        TOXENV: py36-test-deps,py36-test-mindeps,py36-test-deps-pre,py36-test-deps-tables
-        WHL_FILE: h5py*-cp36-*manylinux1_x86_64.whl
       py37:
         python.version: '3.7'
         TOXENV: py37-test-deps,py37-test-mindeps,py37-test-deps-pre,py37-test-deps-tables
-        WHL_FILE: h5py*-cp37-*manylinux1_x86_64.whl
+        WHL_FILE: h5py*-cp37-*manylinux2010_x86_64.whl
       py38:
         python.version: '3.8'
         TOXENV: py38-test-deps,py38-test-mindeps,py38-test-deps-pre
-        WHL_FILE: h5py*-cp38-*manylinux1_x86_64.whl
+        WHL_FILE: h5py*-cp38-*manylinux2010_x86_64.whl
       py39:
         python.version: '3.9'
         TOXENV: py39-test-deps,py39-test-mindeps,py39-test-deps-pre
-        WHL_FILE: h5py*-cp39-*manylinux1_x86_64.whl
+        WHL_FILE: h5py*-cp39-*manylinux2010_x86_64.whl
+      py310:
+        python.version: '3.10'
+        TOXENV: py310-test-deps,py310-test-mindeps,py310-test-deps-pre
+        WHL_FILE: h5py*-cp310-*manylinux2010_x86_64.whl
 
   steps:
     - template: ci/azure-pipelines-test-wheels.yml
@@ -166,7 +166,7 @@ jobs:
 
 - job: 'Windows'
   pool:
-    vmImage: vs2017-win2016
+    vmImage: windows-2019
   strategy:
     matrix:
     # -deps : test with default (latest) versions of dependencies
@@ -217,16 +217,12 @@ jobs:
 - job: 'test_windows_wheels'
   dependsOn: windows_wheels
   pool:
-    vmImage: vs2017-win2016
+    vmImage: windows-2019
   variables:
     H5PY_TEST_CHECK_FILTERS: 1
 
   strategy:
     matrix:
-      py36:
-        python.version: '3.6'
-        TOXENV: py36-test-deps,py36-test-mindeps,py36-test-deps-tables
-        WHL_FILE: h5py*-cp36-*.whl
       py37:
         python.version: '3.7'
         TOXENV: py37-test-deps,py37-test-mindeps,py37-test-deps-tables
@@ -239,6 +235,10 @@ jobs:
         python.version: '3.9'
         TOXENV: py39-test-deps,py39-test-mindeps,py39-test-deps-pre
         WHL_FILE: h5py*-cp39-*.whl
+      py310:
+        python.version: '3.10'
+        TOXENV: py310-test-deps,py310-test-mindeps,py310-test-deps-pre
+        WHL_FILE: h5py*-cp310-*.whl
 
   steps:
     - template: ci/azure-pipelines-test-wheels.yml
@@ -299,10 +299,6 @@ jobs:
 
   strategy:
     matrix:
-      py36:
-        python.version: '3.6'
-        TOXENV: py36-test-deps,py36-test-mindeps,py36-test-deps-tables
-        WHL_FILE: h5py*-cp36-*.whl
       py37:
         python.version: '3.7'
         TOXENV: py37-test-deps,py37-test-mindeps,py37-test-deps-tables
@@ -315,6 +311,10 @@ jobs:
         python.version: '3.9'
         TOXENV: py39-test-deps,py39-test-mindeps,py39-test-deps-pre
         WHL_FILE: h5py*-cp39-*.whl
+      py310:
+        python.version: '3.10'
+        TOXENV: py310-test-deps,py310-test-mindeps,py310-test-deps-pre
+        WHL_FILE: h5py*-cp310-*.whl
 
   steps:
     - template: ci/azure-pipelines-test-wheels.yml
