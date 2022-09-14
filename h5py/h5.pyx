@@ -27,7 +27,7 @@ NUMPY_VERSION_COMPILED_AGAINST = NUMPY_BUILD_VERSION
 CYTHON_VERSION_COMPILED_WITH = CYTHON_BUILD_VERSION
 
 
-class ByteStringContext(object):
+class ByteStringContext:
 
     def __init__(self):
         self._readbytes = False
@@ -140,6 +140,14 @@ cdef class H5PYConfig:
         """ Boolean indicating if ROS3 VDS is available """
         def __get__(self):
             IF ROS3:
+                return True
+            ELSE:
+                return False
+
+    property direct_vfd:
+        """ Boolean indicating if DIRECT VFD is available """
+        def __get__(self):
+            IF DIRECT_VFD:
                 return True
             ELSE:
                 return False

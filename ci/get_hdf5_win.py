@@ -23,7 +23,7 @@ ZLIB_ROOT = environ.get('ZLIB_ROOT')
 CMAKE_CONFIGURE_CMD = [
     "cmake", "-DBUILD_SHARED_LIBS:BOOL=ON", "-DCMAKE_BUILD_TYPE:STRING=RELEASE",
     "-DHDF5_BUILD_CPP_LIB=OFF", "-DHDF5_BUILD_HL_LIB=ON",
-    "-DHDF5_BUILD_TOOLS:BOOL=OFF",
+    "-DHDF5_BUILD_TOOLS:BOOL=OFF", "-DBUILD_TESTING:BOOL=OFF",
 ]
 if ZLIB_ROOT:
     CMAKE_CONFIGURE_CMD += [
@@ -48,7 +48,7 @@ VSVERSION_TO_GENERATOR = {
     "10-64": "Visual Studio 10 2010 Win64",
     "14-64": "Visual Studio 14 2015 Win64",
     "15-64": "Visual Studio 15 2017 Win64",
-    "16-64": "Visual Studio 16 2019 Win64",
+    "16-64": "Visual Studio 16 2019",
 }
 
 

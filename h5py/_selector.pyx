@@ -10,7 +10,7 @@ but there is no equivalent to this when selecting data in HDF5. So we store a
 separate boolean ('scalar') for each dimension to distinguish these cases.
 """
 from numpy cimport (
-    ndarray, npy_intp, PyArray_SimpleNew, PyArray_DATA, import_array,
+    ndarray, npy_intp, PyArray_ZEROS, PyArray_DATA, import_array,
     PyArray_IsNativeByteOrder,
 )
 from cpython cimport PyNumber_Index
@@ -179,6 +179,10 @@ cdef class Selector:
                     a = np.asarray(a)
                 if a.ndim != 1:
                     raise TypeError("Only 1D arrays allowed for fancy indexing")
+                if a.dtype.kind == 'b':
+                    if a.size != l:
+                        raise TypeError("boolean index did not match indexed array")
+                    a = a.nonzero()[0]
                 if not np.issubdtype(a.dtype, np.integer):
                     raise TypeError("Indexing arrays must have integer dtypes")
                 if array_ix != -1:
@@ -329,7 +333,7 @@ cdef class Reader:
                     arr_shape[arr_rank] = mshape[i]
                     arr_rank += 1
 
-            arr = PyArray_SimpleNew(arr_rank, arr_shape, self.np_typenum)
+            arr = PyArray_ZEROS(arr_rank, arr_shape, self.np_typenum, 0)
             if not self.native_byteorder:
                 arr = arr.newbyteorder()
         finally:
@@ -374,7 +378,7 @@ cdef class Reader:
             return arr
 
 
-class MultiBlockSlice(object):
+class MultiBlockSlice:
     """
         A conceptual extension of the built-in slice object to allow selections
         using start, stride, count and block.

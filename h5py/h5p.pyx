@@ -504,9 +504,25 @@ cdef class PropDCID(PropOCID):
         0-dimensional NumPy array; otherwise, the value will be read from
         the first element.
         """
+        from .h5t import check_string_dtype
         cdef TypeID tid
+        cdef char * c_ptr
 
         check_numpy_read(value, -1)
+
+        # check for strings
+        # create correct typeID and pointer to c_str
+        string_info = check_string_dtype(value.dtype)
+        if string_info is not None:
+            # if needed encode fill_value
+            fill_value = value.item()
+            if not isinstance(fill_value, bytes):
+                fill_value = fill_value.encode(string_info.encoding)
+            c_ptr = fill_value
+            tid = py_create(value.dtype, logical=1)
+            H5Pset_fill_value(self.id, tid.id, &c_ptr)
+            return
+
         tid = py_create(value.dtype)
         H5Pset_fill_value(self.id, tid.id, value.data)
 
@@ -519,12 +535,24 @@ cdef class PropDCID(PropOCID):
         converted to match the array dtype.  If the array has nonzero
         rank, only the first element will contain the value.
         """
+        from .h5t import check_string_dtype
         cdef TypeID tid
+        cdef char * c_ptr = NULL
 
         check_numpy_write(value, -1)
+
+        # check for vlen strings
+        # create correct typeID and convert from c_str pointer to string
+        string_info = check_string_dtype(value.dtype)
+        if string_info is not None and string_info.length is None:
+            tid = py_create(value.dtype, logical=1)
+            ret = H5Pget_fill_value(self.id, tid.id, &c_ptr)
+            fill_value = c_ptr
+            value[0] = fill_value
+            return
+
         tid = py_create(value.dtype)
         H5Pget_fill_value(self.id, tid.id, value.data)
-
 
     @with_phil
     def fill_value_defined(self):
@@ -1102,6 +1130,37 @@ cdef class PropFAID(PropInstanceID):
         """
         H5Pset_fapl_sec2(self.id)
 
+    if DIRECT_VFD:
+        @with_phil
+        def set_fapl_direct(self, size_t alignment=0, size_t block_size=0, size_t cbuf_size=0):
+            """(size_t alignment, size_t block_size, size_t cbuf_size)
+
+            Select the "direct" driver (h5fd.DIRECT).
+
+            Parameters:
+                hid_t fapl_id       IN: File access property list identifier
+                size_t alignment    IN: Required memory alignment boundary
+                size_t block_size   IN: File system block size
+                size_t cbuf_size    IN: Copy buffer size
+
+            Properites with value of 0 indicate that the HDF5 library should
+            choose the value.
+            """
+            H5Pset_fapl_direct(self.id, alignment, block_size, cbuf_size)
+
+        @with_phil
+        def get_fapl_direct(self):
+            """ () => (alignment, block_size, cbuf_size)
+
+            Retrieve the DIRECT VFD config
+            """
+            cdef size_t alignment
+            cdef size_t block_size
+            cdef size_t cbuf_size
+
+            H5Pget_fapl_direct(self.id, &alignment, &block_size, &cbuf_size)
+            return alignment, block_size, cbuf_size
+
 
     @with_phil
     def set_fapl_stdio(self):
@@ -1162,7 +1221,9 @@ cdef class PropFAID(PropInstanceID):
         - h5fd.MPIO
         - h5fd.MULTI
         - h5fd.SEC2
+        - h5fd.DIRECT  (if available)
         - h5fd.STDIO
+        - h5fd.ROS3    (if available)
         """
         return H5Pget_driver(self.id)
 
@@ -1535,6 +1596,7 @@ cdef class PropLAID(PropInstanceID):
 
         size = H5Pget_elink_prefix(self.id, NULL, 0)
         buf = <char*>emalloc(size+1)
+        buf[0] = 0
         try:
             H5Pget_elink_prefix(self.id, buf, size+1)
             pstr = buf
@@ -1681,9 +1743,11 @@ cdef class PropDAID(PropInstanceID):
     """ Dataset access property list """
 
     def __cinit__(self, *args):
+        self._efile_prefix_buf = NULL
         self._virtual_prefix_buf = NULL
 
     def __dealloc__(self):
+        efree(self._efile_prefix_buf)
         efree(self._virtual_prefix_buf)
 
     @with_phil
@@ -1712,6 +1776,46 @@ cdef class PropDAID(PropInstanceID):
 
         H5Pget_chunk_cache(self.id, &rdcc_nslots, &rdcc_nbytes, &rdcc_w0 )
         return (rdcc_nslots,rdcc_nbytes,rdcc_w0)
+
+    if HDF5_VERSION >= (1, 8, 17):
+        @with_phil
+        def get_efile_prefix(self):
+            """() => STR
+
+            Get the filesystem path prefix configured for accessing external
+            datasets.
+            """
+            cdef char* cprefix = NULL
+            cdef ssize_t size
+
+            size = H5Pget_efile_prefix(self.id, NULL, 0)
+            cprefix = <char*>emalloc(size+1)
+            cprefix[0] = 0
+            try:
+                # TODO check return size
+                H5Pget_efile_prefix(self.id, cprefix, <size_t>size+1)
+                prefix = bytes(cprefix)
+            finally:
+                efree(cprefix)
+
+            return prefix
+
+        @with_phil
+        def set_efile_prefix(self, char* prefix):
+            """(STR prefix)
+
+            Set a filesystem path prefix for looking up external datasets.
+            This is prepended to all filenames specified in the external dataset.
+            """
+            cdef size_t size
+
+            # HDF5 requires that we hang on to this buffer
+            efree(self._efile_prefix_buf)
+            size = strlen(prefix)
+            self._efile_prefix_buf = <char*>emalloc(size+1)
+            strcpy(self._efile_prefix_buf, prefix)
+
+            H5Pset_efile_prefix(self.id, self._efile_prefix_buf)
 
     # === Virtual dataset functions ===========================================
     IF HDF5_VERSION >= VDS_MIN_HDF5_VERSION:
@@ -1792,6 +1896,7 @@ cdef class PropDAID(PropInstanceID):
 
             size = H5Pget_virtual_prefix(self.id, NULL, 0)
             cprefix = <char*>emalloc(size+1)
+            cprefix[0] = 0
             try:
                 # TODO check return size
                 H5Pget_virtual_prefix(self.id, cprefix, <size_t>size+1)

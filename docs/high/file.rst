@@ -146,6 +146,25 @@ a better option may be to store temporary data on disk using the functions in
    the HDF5 file before closing the file object it's wrapping. If there is an
    error while trying to close the HDF5 file, segfaults may occur.
 
+
+.. warning::
+
+   When using a Python file-like object, using service threads to implement the
+   file-like API can lead to process deadlocks.
+
+   ``h5py`` serializes access to low-level hdf5 functions via a global lock.
+   This lock is held when the file-like methods are called and is required to
+   delete/deallocate ``h5py`` objects.  Thus, if cyclic garbage collection is
+   triggered on a service thread the program will deadlock.  The service thread
+   can not continue until it acquires the lock, and the thread holding the lock will
+   not release it until the service thread completes its work.
+
+   If possible, avoid creating circular references (either via ``weakrefs`` or
+   manually breaking the cycles) that keep ``h5py`` objects alive.  If this
+   is not possible, manually triggering a garbage collection from the correct
+   thread or temporarily disabling garbage collection may help.
+
+
 .. note::
 
    Using a Python file-like object for HDF5 is internally more complex,
@@ -348,6 +367,24 @@ chunk cache*.
 Chunks and caching are described in greater detail in the `HDF5 documentation
 <https://portal.hdfgroup.org/display/HDF5/Chunking+in+HDF5>`_.
 
+.. _file_alignment:
+
+Data alignment
+--------------
+
+When creating datasets within files, it may be advantageous to align the offset
+within the file itself. This can help optimize read and write times if the data
+become aligned with the underlying hardware, or may help with parallelism with
+MPI. Unfortunately, aligning small variables to large blocks can leave alot of
+empty space in a file. To this effect, application developers are left with two
+options to tune the alignment of data within their file.  The two variables
+``alignment_threshold`` and ``alignment_interval``  in the :class:`File`
+constructor help control the threshold in bytes where the data alignment policy
+takes effect and the alignment in bytes within the file. The alignment is
+measured from the end of the user block.
+
+For more information, see the official HDF5 documentation `H5P_SET_ALIGNMENT
+<https://portal.hdfgroup.org/display/HDF5/H5P_SET_ALIGNMENT>`_.
 
 Reference
 ---------
@@ -358,15 +395,17 @@ Reference
     HDF5 name of the root group, "``/``". To access the on-disk name, use
     :attr:`File.filename`.
 
-.. class:: File(name, mode=None, driver=None, libver=None, \
-    userblock_size=None, swmr=False, rdcc_nslots=None, rdcc_nbytes=None, \
-    rdcc_w0=None, track_order=None, fs_strategy=None, fs_persist=False, \
-    fs_threshold=1, **kwds)
+.. class:: File(name, mode='r', driver=None, libver=None, userblock_size=None, \
+    swmr=False, rdcc_nslots=None, rdcc_nbytes=None, rdcc_w0=None, \
+    track_order=None, fs_strategy=None, fs_persist=False, fs_threshold=1, \
+    fs_page_size=None, page_buf_size=None, min_meta_keep=0, min_raw_keep=0, \
+    locking=None, alignment_threshold=1, alignment_interval=1, **kwds)
 
     Open or create a new file.
 
-    Note that in addition to the File-specific methods and properties listed
-    below, File objects inherit the full interface of :class:`Group`.
+    Note that in addition to the :class:`File`-specific methods and properties
+    listed below, :class:`File` objects inherit the full interface of
+    :class:`Group`.
 
     :param name:    Name of file (`bytes` or `str`), or an instance of
                     :class:`h5f.FileID` to bind to an existing
@@ -399,6 +438,27 @@ Reference
     :param fs_threshold: The smallest free-space section size that the free
             space manager will track. Only allowed when creating a new file.
             The default is 1.
+    :param page_buf_size: Page buffer size in bytes. Only allowed for HDF5 files
+            created with fs_strategy="page". Must be a power of two value and
+            greater or equal than the file space page size when creating the
+            file. It is not used by default.
+    :param min_meta_keep: Minimum percentage of metadata to keep in the page
+            buffer before allowing pages containing metadata to be evicted.
+            Applicable only if ``page_buf_size`` is set. Default value is zero.
+    :param min_raw_keep: Minimum percentage of raw data to keep in the page
+            buffer before allowing pages containing raw data to be evicted.
+            Applicable only if ``page_buf_size`` is set. Default value is zero.
+    :param locking: The file locking behavior. One of False (or "false"), True
+            (or "true"), "best-effort", or None. Warning: The
+            HDF5_USE_FILE_LOCKING environment variable can override this
+            parameter. Only available with HDF5 >= 1.12.1 or 1.10.x >= 1.10.7.
+    :param alignment_threshold: Together with ``alignment_interval``, this
+            property ensures that any file object greater than or equal
+            in size to the alignement threshold (in bytes) will be
+            aligned on an address which is a multiple of alignment interval.
+    :param alignment_interval: This property should be used in conjunction with
+            ``alignment_threshold``. See the description above. For more
+            details, see :ref:`file_alignment`.
     :param kwds:    Driver-specific keywords; see :ref:`file_driver`.
 
     .. method:: __bool__()

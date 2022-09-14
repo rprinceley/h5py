@@ -20,12 +20,11 @@ if '' not in sys.path:
 import setup_build, setup_configure
 
 
-VERSION = '3.6.0'
+VERSION = '3.7.0'
 
 
 # these are required to use h5py
 RUN_REQUIRES = [
-    "cached-property; python_version<'3.8'",
     # We only really aim to support NumPy & Python combinations for which
     # there are wheels on PyPI (e.g. NumPy >=1.17.5 for Python 3.8).
     # But we don't want to duplicate the information in oldest-supported-numpy
@@ -46,7 +45,8 @@ SETUP_REQUIRES = []
 if setup_configure.mpi_enabled():
     RUN_REQUIRES.append('mpi4py >=3.0.2')
     SETUP_REQUIRES.append("mpi4py ==3.0.2; python_version<'3.8'")
-    SETUP_REQUIRES.append("mpi4py ==3.0.3; python_version>='3.8'")
+    SETUP_REQUIRES.append("mpi4py ==3.0.3; python_version=='3.8.*'")
+    SETUP_REQUIRES.append("mpi4py ==3.1.0; python_version>='3.9'")
 
 # Set the environment variable H5PY_SETUP_REQUIRES=0 if we need to skip
 # setup_requires for any reason.
@@ -113,6 +113,9 @@ setup(
   maintainer_email = 'andrew.collette@gmail.com',
   license = 'BSD',
   url = 'http://www.h5py.org',
+  project_urls = {
+      'Source': 'https://github.com/h5py/h5py',
+  },
   download_url = 'https://pypi.python.org/pypi/h5py',
   packages = [
       'h5py',
