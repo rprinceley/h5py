@@ -22,6 +22,7 @@ cdef extern from "hdf5.h":
   ctypedef signed long long hssize_t
   ctypedef signed long long haddr_t
   ctypedef long int off_t
+  ctypedef int H5FD_class_value_t
 
   ctypedef struct hvl_t:
     size_t len                 # Length of VL data (in base type units)
@@ -236,8 +237,12 @@ cdef extern from "hdf5.h":
     H5FD_MPIO_INDEPENDENT = 0,
     H5FD_MPIO_COLLECTIVE
 
+  int H5FD_CLASS_VERSION 
+
   # Class information for each file driver
   ctypedef struct H5FD_class_t:
+    unsigned version;
+    H5FD_class_value_t value;
     const char *name
     haddr_t maxaddr
     H5F_close_degree_t fc_degree
@@ -265,10 +270,22 @@ cdef extern from "hdf5.h":
     herr_t  (*get_handle)(H5FD_t *file, hid_t fapl, void**file_handle)
     herr_t  (*read)(H5FD_t *file, H5FD_mem_t type, hid_t dxpl, haddr_t addr, size_t size, void *buffer)
     herr_t  (*write)(H5FD_t *file, H5FD_mem_t type, hid_t dxpl, haddr_t addr, size_t size, const void *buffer)
+    herr_t  (*read_vector)(H5FD_t *file, hid_t dxpl, uint32_t count, H5FD_mem_t types[], haddr_t addrs[],
+                           size_t sizes[], void *bufs[])
+    herr_t  (*write_vector)(H5FD_t *file, hid_t dxpl, uint32_t count, H5FD_mem_t types[], haddr_t addrs[],
+                            size_t sizes[], const void *bufs[])
+    herr_t  (*read_selection)(H5FD_t *file, H5FD_mem_t type, hid_t dxpl_id, size_t count, hid_t mem_spaces[],
+                              hid_t file_spaces[], haddr_t offsets[], size_t element_sizes[],
+                              void *bufs[])
+    herr_t  (*write_selection)(H5FD_t *file, H5FD_mem_t type, hid_t dxpl_id, size_t count, hid_t mem_spaces[],
+                               hid_t file_spaces[], haddr_t offsets[], size_t element_sizes[],
+                               const void *bufs[])    
     herr_t  (*flush)(H5FD_t *file, hid_t dxpl_id, hbool_t closing)
     herr_t  (*truncate)(H5FD_t *file, hid_t dxpl_id, hbool_t closing)
     herr_t  (*lock)(H5FD_t *file, hbool_t rw)
     herr_t  (*unlock)(H5FD_t *file)
+    herr_t  (*delete)(const char *name, hid_t fapl)
+    herr_t  (*ctl)(H5FD_t *file, uint64_t op_code, uint64_t flags, const void *inputp, void **output)
     H5FD_mem_t fl_map[<int>H5FD_MEM_NTYPES]
 
   # The main datatype for each driver

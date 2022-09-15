@@ -192,6 +192,8 @@ cdef herr_t H5FD_fileobj_flush(H5FD_fileobj_t *f, hid_t dxpl, hbool_t closing) e
 cdef H5FD_class_t info
 memset(&info, 0, sizeof(info))
 
+info.version = H5FD_CLASS_VERSION
+info.value = 5421
 info.name = 'fileobj'
 info.maxaddr = libc.stdint.SIZE_MAX - 1
 info.fc_degree = H5F_CLOSE_WEAK
