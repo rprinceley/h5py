@@ -547,6 +547,14 @@ cdef class PropDCID(PropOCID):
         if string_info is not None and string_info.length is None:
             tid = py_create(value.dtype, logical=1)
             ret = H5Pget_fill_value(self.id, tid.id, &c_ptr)
+            if c_ptr == NULL:
+                # If the pointer is NULL (either the value did not get changed,
+                # or maybe the 0 length string, it's unclear currently), if
+                # PyBytes_FromString is called on the pointer, we get a
+                # segfault. If we set the value to empty bytes, then we
+                # shouldn't segfault.
+                value[0] = b""
+                return
             fill_value = c_ptr
             value[0] = fill_value
             return
@@ -1090,7 +1098,7 @@ cdef class PropFAID(PropInstanceID):
             """
             cdef H5FD_ros3_fapl_t config
             config.version = H5FD_CURR_ROS3_FAPL_T_VERSION
-            if len(aws_region) or len(secret_id) or len(secret_key):
+            if len(aws_region) and len(secret_id) and len(secret_key):
                 config.authenticate = <hbool_t>1
             else:
                 config.authenticate = <hbool_t>0
@@ -1295,6 +1303,23 @@ cdef class PropFAID(PropInstanceID):
         """
         H5Pset_libver_bounds(self.id, <H5F_libver_t>low, <H5F_libver_t>high)
 
+    @with_phil
+    def set_meta_block_size(self, size_t size):
+        """ (UINT size)
+
+        Set the current minimum size, in bytes, of new metadata block allocations.
+        """
+        H5Pset_meta_block_size(self.id, size)
+
+    @with_phil
+    def get_meta_block_size(self):
+        """ () => UINT size
+
+        Get the current minimum size, in bytes, of new metadata block allocations.
+        """
+        cdef hsize_t size
+        H5Pget_meta_block_size(self.id, &size)
+        return size
 
     @with_phil
     def get_libver_bounds(self):

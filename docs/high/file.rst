@@ -96,18 +96,24 @@ of supported drivers and their options:
           Raw data filename extension. Default is '-r.h5'.
 
     'ros3'
-        Allows read only access to HDF5 files on S3. Keywords:
+        Allows read-only access to HDF5 files in AWS S3 or S3 compatible object
+        stores. HDF5 file name must be one of \http://, \https://, or s3://
+        resource location. An s3:// location will be translated into an AWS
+        `path-style <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>`_
+        location. Keywords:
 
         aws_region:
-          Name of the AWS "region" where the S3 bucket with the file is, e.g. ``b"us-east-1"``. Default is ``b''``.
+          AWS region of the S3 bucket with the file, e.g. ``b"us-east-1"``.
+          Default is ``b''``. Required for s3:// locations.
 
         secret_id:
-          "Access ID" for the resource. Default is ``b''``.
+          AWS access key ID. Default is ``b''``.
 
         secret_key:
-          "Secret Access Key" associated with the ID and resource. Default is ``b''``.
+          AWS secret access key. Default is ``b''``.
 
-        The argument values must be ``bytes`` objects.
+        The argument values must be ``bytes`` objects. All three arguments are
+        required to activate AWS authentication.
 
 
 .. _file_fileobj:
@@ -327,10 +333,10 @@ given dataset's chunks are controlled when creating the dataset, but it is
 possible to adjust the behavior of the chunk *cache* when opening the file.
 
 The parameters controlling this behavior are prefixed by ``rdcc``, for *raw data
-chunk cache*.
+chunk cache*. They apply to all datasets unless specifically changed for each one.
 
 * ``rdcc_nbytes`` sets the total size (measured in bytes) of the raw data chunk
-  cache for each dataset.  The default size is 1 MB.
+  cache for each dataset.  The default size is 1 MiB.
   This should be set to the size of each chunk times the number of
   chunks that are likely to be needed in cache.
 * ``rdcc_w0`` sets the policy for chunks to be
@@ -386,6 +392,21 @@ measured from the end of the user block.
 For more information, see the official HDF5 documentation `H5P_SET_ALIGNMENT
 <https://portal.hdfgroup.org/display/HDF5/H5P_SET_ALIGNMENT>`_.
 
+.. _file_meta_block_size:
+
+Meta block size
+---------------
+
+Space for metadata is allocated in blocks within the HDF5 file. The argument
+``meta_block_size`` of the :class:`File` constructor sets the minimum size of
+these blocks.  Setting a large value can consolidate metadata into a small
+number of regions. Setting a small value can reduce the overall file size,
+especially in combination with the ``libver`` option. This controls how the
+overall data and metadata are laid out within the file.
+
+For more information, see the offical HDF5 documentation `H5P_SET_META_BLOCK_SIZE
+<https://portal.hdfgroup.org/display/HDF5/H5P_SET_META_BLOCK_SIZE>`_.
+
 Reference
 ---------
 
@@ -431,10 +452,12 @@ Reference
                     ``h5.get_config().track_order``.
     :param fs_strategy: The file space handling strategy to be used.
             Only allowed when creating a new file. One of "fsm", "page",
-            "aggregate", "none", or None (to use the HDF5 default).
+            "aggregate", "none", or ``None`` (to use the HDF5 default).
     :param fs_persist: A boolean to indicate whether free space should be
             persistent or not. Only allowed when creating a new file. The
             default is False.
+    :param fs_page_size: File space page size in bytes. Only use when
+            fs_strategy="page". If ``None`` use the HDF5 default (4096 bytes).
     :param fs_threshold: The smallest free-space section size that the free
             space manager will track. Only allowed when creating a new file.
             The default is 1.
@@ -448,10 +471,19 @@ Reference
     :param min_raw_keep: Minimum percentage of raw data to keep in the page
             buffer before allowing pages containing raw data to be evicted.
             Applicable only if ``page_buf_size`` is set. Default value is zero.
-    :param locking: The file locking behavior. One of False (or "false"), True
-            (or "true"), "best-effort", or None. Warning: The
-            HDF5_USE_FILE_LOCKING environment variable can override this
-            parameter. Only available with HDF5 >= 1.12.1 or 1.10.x >= 1.10.7.
+    :param locking: The file locking behavior. One of:
+
+            - False (or "false") --  Disable file locking
+            - True (or "true")   --  Enable file locking
+            - "best-effort"      --  Enable file locking but ignore some errors
+            - None               --  Use HDF5 defaults
+
+            .. warning::
+
+                The HDF5_USE_FILE_LOCKING environment variable can override
+                this parameter.
+
+            Only available with HDF5 >= 1.12.1 or 1.10.x >= 1.10.7.
     :param alignment_threshold: Together with ``alignment_interval``, this
             property ensures that any file object greater than or equal
             in size to the alignement threshold (in bytes) will be
@@ -459,6 +491,8 @@ Reference
     :param alignment_interval: This property should be used in conjunction with
             ``alignment_threshold``. See the description above. For more
             details, see :ref:`file_alignment`.
+    :param meta_block_size: Determines the current minimum size, in bytes, of
+            new metadata block allocations. See :ref:`file_meta_block_size`.
     :param kwds:    Driver-specific keywords; see :ref:`file_driver`.
 
     .. method:: __bool__()
@@ -512,3 +546,8 @@ Reference
     .. attribute:: userblock_size
 
         Size of user block (in bytes).  Generally 0.  See :ref:`file_userblock`.
+
+    .. attribute:: meta_block_size
+
+        Minimum size, in bytes, of metadata block allocations. Default: 2048.
+        See :ref`file_meta_block_size`.

@@ -476,6 +476,25 @@ class TestCreateFillvalue(BaseDataset):
                     dtype=[('a', 'i'), ('b', 'f')], fillvalue=42)
 
 
+@pytest.mark.parametrize('dt,expected', [
+    (int, 0),
+    (np.int32, 0),
+    (np.int64, 0),
+    (float, 0.0),
+    (np.float32, 0.0),
+    (np.float64, 0.0),
+    (h5py.string_dtype(encoding='utf-8', length=5), b''),
+    (h5py.string_dtype(encoding='ascii', length=5), b''),
+    (h5py.string_dtype(encoding='utf-8'), b''),
+    (h5py.string_dtype(encoding='ascii'), b''),
+    (h5py.string_dtype(), b''),
+
+])
+def test_get_unset_fill_value(dt, expected, writable_file):
+    dset = writable_file.create_dataset('foo', (10,), dtype=dt)
+    assert dset.fillvalue == expected
+
+
 class TestCreateNamedType(BaseDataset):
 
     """
@@ -1037,6 +1056,13 @@ class TestDtype(BaseDataset):
         dset = self.f.create_dataset('foo', (5,), '|S10')
         self.assertEqual(dset.dtype, np.dtype('|S10'))
 
+    def test_dtype_complex32(self):
+        """ Retrieve dtype from complex float16 dataset (gh-2156) """
+        # No native support in numpy as of v1.23.3, so expect compound type.
+        complex32 = np.dtype([('r', np.float16), ('i', np.float16)])
+        dset = self.f.create_dataset('foo', (5,), complex32)
+        self.assertEqual(dset.dtype, complex32)
+
 
 class TestLen(BaseDataset):
 
@@ -1141,6 +1167,15 @@ class TestStrings(BaseDataset):
         self.assertEqual(string_info.encoding, 'ascii')
         self.assertEqual(string_info.length, 10)
 
+    def test_fixed_bytes_fillvalue(self):
+        """ Vlen bytes dataset handles fillvalue """
+        dt = h5py.string_dtype(encoding='ascii', length=10)
+        fill_value = b'bar'
+        ds = self.f.create_dataset('x', (100,), dtype=dt, fillvalue=fill_value)
+        self.assertEqual(self.f['x'][0], fill_value)
+        self.assertEqual(self.f['x'].asstr()[0], fill_value.decode())
+        self.assertEqual(self.f['x'].fillvalue, fill_value)
+
     def test_fixed_utf8(self):
         dt = h5py.string_dtype(encoding='utf-8', length=5)
         ds = self.f.create_dataset('x', (100,), dtype=dt)
@@ -1156,6 +1191,15 @@ class TestStrings(BaseDataset):
             ds[8:10] = np.array([s, s], dtype='U')
 
         np.testing.assert_array_equal(ds[:8], np.array([s.encode('utf-8')] * 8, dtype='S'))
+
+    def test_fixed_utf_8_fillvalue(self):
+        """ Vlen unicode dataset handles fillvalue """
+        dt = h5py.string_dtype(encoding='utf-8', length=10)
+        fill_value = 'bár'.encode("utf-8")
+        ds = self.f.create_dataset('x', (100,), dtype=dt, fillvalue=fill_value)
+        self.assertEqual(self.f['x'][0], fill_value)
+        self.assertEqual(self.f['x'].asstr()[0], fill_value.decode("utf-8"))
+        self.assertEqual(self.f['x'].fillvalue, fill_value)
 
     def test_fixed_unicode(self):
         """ Fixed-length unicode datasets are unsupported (raise TypeError) """
@@ -1335,6 +1379,16 @@ class TestCompound(BaseDataset):
         # Extract single field
         np.testing.assert_array_equal(
             self.f['test'].fields('x')[:], testdata['x']
+        )
+        # Check __array__() method of fields wrapper
+        np.testing.assert_array_equal(
+            np.asarray(self.f['test'].fields(['x', 'y'])), testdata[['x', 'y']]
+        )
+        # Check type conversion of __array__() method
+        dt_int = np.dtype([('x', np.int32)])
+        np.testing.assert_array_equal(
+            np.asarray(self.f['test'].fields(['x']), dtype=dt_int),
+            testdata[['x']].astype(dt_int)
         )
 
         # Check len() on fields wrapper
@@ -1740,6 +1794,38 @@ def test_get_chunk_details():
         assert si.size > 0
 
 
+@ut.skipUnless(h5py.version.hdf5_version_tuple >= (1, 12, 3) or
+               (h5py.version.hdf5_version_tuple >= (1, 10, 10) and h5py.version.hdf5_version_tuple < (1, 10, 99)),
+               "chunk iteration requires  HDF5 1.10.10 and later 1.10, or 1.12.3 and later")
+def test_chunk_iter():
+    """H5Dchunk_iter() for chunk information"""
+    from io import BytesIO
+    buf = BytesIO()
+    with h5py.File(buf, 'w') as f:
+        f.create_dataset('test', shape=(100, 100), chunks=(10, 10), dtype='i4')
+        f['test'][:] = 1
+
+    buf.seek(0)
+    with h5py.File(buf, 'r') as f:
+        dsid = f['test'].id
+
+        num_chunks = dsid.get_num_chunks()
+        assert num_chunks == 100
+        ci = {}
+        for j in range(num_chunks):
+            si = dsid.get_chunk_info(j)
+            ci[si.chunk_offset] = si
+
+        def callback(chunk_info):
+            known = ci[chunk_info.chunk_offset]
+            assert chunk_info.chunk_offset == known.chunk_offset
+            assert chunk_info.filter_mask == known.filter_mask
+            assert chunk_info.byte_offset == known.byte_offset
+            assert chunk_info.size == known.size
+
+        dsid.chunk_iter(callback)
+
+
 def test_empty_shape(writable_file):
     ds = writable_file.create_dataset('empty', dtype='int32')
     assert ds.shape is None
@@ -1803,6 +1889,28 @@ def test_allow_unknown_filter(writable_file):
         allow_unknown_filter=True
     )
     assert str(fake_filter_id) in ds._filters
+
+
+def test_dset_chunk_cache():
+    """Chunk cache configuration for individual datasets."""
+    from io import BytesIO
+    buf = BytesIO()
+    with h5py.File(buf, 'w') as fout:
+        ds = fout.create_dataset(
+            'x', shape=(10, 20), chunks=(5, 4), dtype='i4',
+            rdcc_nbytes=2 * 1024 * 1024, rdcc_w0=0.2, rdcc_nslots=997)
+        ds_chunk_cache = ds.id.get_access_plist().get_chunk_cache()
+        assert fout.id.get_access_plist().get_cache()[1:] != ds_chunk_cache
+        assert ds_chunk_cache == (997, 2 * 1024 * 1024, 0.2)
+
+    buf.seek(0)
+    with h5py.File(buf, 'r') as fin:
+        ds = fin.require_dataset(
+            'x', shape=(10, 20), dtype='i4',
+            rdcc_nbytes=3 * 1024 * 1024, rdcc_w0=0.67, rdcc_nslots=709)
+        ds_chunk_cache = ds.id.get_access_plist().get_chunk_cache()
+        assert fin.id.get_access_plist().get_cache()[1:] != ds_chunk_cache
+        assert ds_chunk_cache == (709, 3 * 1024 * 1024, 0.67)
 
 
 class TestCommutative(BaseDataset):

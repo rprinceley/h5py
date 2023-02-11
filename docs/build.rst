@@ -79,6 +79,11 @@ To install h5py from source, you need:
 
 * A supported Python version with development headers
 * HDF5 1.8.4 or newer with development headers
+
+  * HDF5 versions newer than the h5py version you're using might not work.
+  * Odd minor versions of HDF5 (e.g. 1.13) are experimental, and might not work.
+    Use a 'maintenance' version like 1.12.x if possible.
+
 * A C compiler
 
 On Unix platforms, you also need ``pkg-config`` unless you explicitly specify
@@ -238,3 +243,7 @@ by setting the ``HDF5_MPI`` environment variable::
 
 You will need a shared-library build of Parallel HDF5 as well, i.e. built with
 ``./configure --enable-shared --enable-parallel``.
+
+On Windows, MS-MPI is usually used which does not have an ``mpicc`` wrapper.
+Instead, you may use the ``H5PY_MSMPI`` environment variable to ``ON`` in
+order to query the system for MS-MPI's information.
