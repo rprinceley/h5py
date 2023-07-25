@@ -27,7 +27,7 @@ import warnings
 from .common import ut, TestCase
 from .data_files import get_data_file_path
 from h5py import File, Group, Dataset
-from h5py._hl.base import is_empty_dataspace
+from h5py._hl.base import is_empty_dataspace, product
 from h5py import h5f, h5t
 from h5py.h5py_warnings import H5pyDeprecationWarning
 from h5py import version
@@ -231,7 +231,7 @@ class TestReadDirectly:
             ((5, 7, 9), (6,), np.s_[2, :6, 3], np.s_[:]),
         ])
     def test_read_direct(self, writable_file, source_shape, dest_shape, source_sel, dest_sel):
-        source_values = np.arange(np.product(source_shape), dtype="int64").reshape(source_shape)
+        source_values = np.arange(product(source_shape), dtype="int64").reshape(source_shape)
         dset = writable_file.create_dataset("dset", source_shape, data=source_values)
         arr = np.full(dest_shape, -1, dtype="int64")
         expected = arr.copy()
@@ -280,7 +280,7 @@ class TestWriteDirectly:
         ])
     def test_write_direct(self, writable_file, source_shape, dest_shape, source_sel, dest_sel):
         dset = writable_file.create_dataset('dset', dest_shape, dtype='int32', fillvalue=-1)
-        arr = np.arange(np.product(source_shape)).reshape(source_shape)
+        arr = np.arange(product(source_shape)).reshape(source_shape)
         expected = np.full(dest_shape, -1, dtype='int32')
         expected[dest_sel] = arr[source_sel]
         dset.write_direct(arr, source_sel, dest_sel)
@@ -1257,10 +1257,13 @@ class TestStrings(BaseDataset):
         # len of ds
         self.assertEqual(10, len(ds.asstr()))
 
-
         # Array output
         np.testing.assert_array_equal(
             ds.asstr()[:1], np.array([data], dtype=object)
+        )
+
+        np.testing.assert_array_equal(
+            np.asarray(ds.asstr())[:1], np.array([data], dtype=object)
         )
 
     def test_asstr_fixed(self):
@@ -1569,21 +1572,6 @@ class TestRegionRefs(BaseDataset):
 class TestAstype(BaseDataset):
     """.astype() wrapper & context manager
     """
-    def test_astype_ctx(self):
-        dset = self.f.create_dataset('x', (100,), dtype='i2')
-        dset[...] = np.arange(100)
-
-        with warnings.catch_warnings(record=True) as warn_rec:
-            warnings.simplefilter("always")
-
-            with dset.astype('f8'):
-                self.assertArrayEqual(dset[...], np.arange(100, dtype='f8'))
-
-            with dset.astype('f4') as f4ds:
-                self.assertArrayEqual(f4ds[...], np.arange(100, dtype='f4'))
-
-        assert [w.category for w in warn_rec] == [H5pyDeprecationWarning] * 2
-
     def test_astype_wrapper(self):
         dset = self.f.create_dataset('x', (100,), dtype='i2')
         dset[...] = np.arange(100)
@@ -1595,6 +1583,12 @@ class TestAstype(BaseDataset):
         dset = self.f.create_dataset('x', (100,), dtype='i2')
         dset[...] = np.arange(100)
         self.assertEqual(100, len(dset.astype('f4')))
+
+    def test_astype_wrapper_asarray(self):
+        dset = self.f.create_dataset('x', (100,), dtype='i2')
+        dset[...] = np.arange(100)
+        arr = np.asarray(dset.astype('f4'), dtype='i2')
+        self.assertArrayEqual(arr, np.arange(100, dtype='i2'))
 
 
 class TestScalarCompound(BaseDataset):

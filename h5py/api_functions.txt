@@ -392,6 +392,8 @@ hdf5:
   ssize_t   H5Pget_elink_prefix(hid_t plist_id, char *prefix, size_t size)
   hid_t     H5Pget_elink_fapl(hid_t lapl_id)
   herr_t    H5Pset_elink_fapl(hid_t lapl_id, hid_t fapl_id)
+  herr_t    H5Pget_elink_acc_flags(hid_t lapl_id, unsigned int *flags)
+  herr_t    H5Pset_elink_acc_flags(hid_t lapl_id, unsigned int flags)
 
   herr_t    H5Pset_create_intermediate_group(hid_t plist_id, unsigned crt_intmd)
   herr_t    H5Pget_create_intermediate_group(hid_t plist_id, unsigned *crt_intmd)
@@ -587,6 +589,7 @@ hdf5:
 
   htri_t    H5Zfilter_avail(H5Z_filter_t id_)
   herr_t    H5Zget_filter_info(H5Z_filter_t filter_, unsigned int *filter_config_flags)
+  herr_t    H5Zregister(const void *cls)
   herr_t    H5Zunregister(H5Z_filter_t id_)
 
 hdf5_hl:
