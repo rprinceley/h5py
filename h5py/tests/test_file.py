@@ -145,8 +145,6 @@ class TestFileOpen(TestCase):
             File(self.mktemp(), 'mongoose')
 
 
-@ut.skipIf(h5py.version.hdf5_version_tuple < (1, 10, 1),
-           'Requires HDF5 1.10.1 or later')
 class TestSpaceStrategy(TestCase):
 
     """
@@ -185,8 +183,6 @@ class TestSpaceStrategy(TestCase):
         fid.close()
 
 
-@ut.skipIf(h5py.version.hdf5_version_tuple < (1, 10, 1),
-           'Requires HDF5 1.10.1 or later')
 @pytest.mark.mpi_skip
 class TestPageBuffering(TestCase):
     """
@@ -439,49 +435,12 @@ class TestDrivers(TestCase):
     # TODO: family driver tests
 
 
-@ut.skipUnless(h5py.version.hdf5_version_tuple < (1, 10, 2),
-               'Requires HDF5 before 1.10.2')
-class TestLibver(TestCase):
 
-    """
-        Feature: File format compatibility bounds can be specified when
-        opening a file.
-    """
-
-    def test_default(self):
-        """ Opening with no libver arg """
-        f = File(self.mktemp(), 'w')
-        self.assertEqual(f.libver, ('earliest', 'latest'))
-        f.close()
-
-    def test_single(self):
-        """ Opening with single libver arg """
-        f = File(self.mktemp(), 'w', libver='latest')
-        self.assertEqual(f.libver, ('latest', 'latest'))
-        f.close()
-
-    def test_multiple(self):
-        """ Opening with two libver args """
-        f = File(self.mktemp(), 'w', libver=('earliest', 'latest'))
-        self.assertEqual(f.libver, ('earliest', 'latest'))
-        f.close()
-
-    def test_none(self):
-        """ Omitting libver arg results in maximum compatibility """
-        f = File(self.mktemp(), 'w')
-        self.assertEqual(f.libver, ('earliest', 'latest'))
-        f.close()
-
-
-@ut.skipIf(h5py.version.hdf5_version_tuple < (1, 10, 2),
-           'Requires HDF5 1.10.2 or later')
 class TestNewLibver(TestCase):
 
     """
         Feature: File format compatibility bounds can be specified when
         opening a file.
-
-        Requirement: HDF5 1.10.2 or later
     """
 
     @classmethod
@@ -874,47 +833,43 @@ class TestPickle(TestCase):
 
 # unittest doesn't work with pytest fixtures (and possibly other features),
 # hence no subclassing TestCase
-# @pytest.mark.mpi
-# class TestMPI:
-#     def test_mpio(self, mpi_file_name):
-#         """ MPIO driver and options """
-#         from mpi4py import MPI
+@pytest.mark.mpi
+class TestMPI:
+    def test_mpio(self, mpi_file_name):
+        """ MPIO driver and options """
+        from mpi4py import MPI
 
-#         with File(mpi_file_name, 'w', driver='mpio', comm=MPI.COMM_WORLD) as f:
-#             assert f
-#             assert f.driver == 'mpio'
+        with File(mpi_file_name, 'w', driver='mpio', comm=MPI.COMM_WORLD) as f:
+            assert f
+            assert f.driver == 'mpio'
 
-#     def test_mpio_append(self, mpi_file_name):
-#         """ Testing creation of file with append """
-#         from mpi4py import MPI
+    def test_mpio_append(self, mpi_file_name):
+        """ Testing creation of file with append """
+        from mpi4py import MPI
 
-#         with File(mpi_file_name, 'a', driver='mpio', comm=MPI.COMM_WORLD) as f:
-#             assert f
-#             assert f.driver == 'mpio'
+        with File(mpi_file_name, 'a', driver='mpio', comm=MPI.COMM_WORLD) as f:
+            assert f
+            assert f.driver == 'mpio'
 
-#     @pytest.mark.skipif(h5py.version.hdf5_version_tuple < (1, 8, 9),
-#                         reason="mpio atomic file operations were added in HDF5 1.8.9+")
-#     def test_mpi_atomic(self, mpi_file_name):
-#         """ Enable atomic mode for MPIO driver """
-#         from mpi4py import MPI
+    def test_mpi_atomic(self, mpi_file_name):
+        """ Enable atomic mode for MPIO driver """
+        from mpi4py import MPI
 
-#         with File(mpi_file_name, 'w', driver='mpio', comm=MPI.COMM_WORLD) as f:
-#             assert not f.atomic
-#             f.atomic = True
-#             assert f.atomic
+        with File(mpi_file_name, 'w', driver='mpio', comm=MPI.COMM_WORLD) as f:
+            assert not f.atomic
+            f.atomic = True
+            assert f.atomic
 
-#     def test_close_multiple_mpio_driver(self, mpi_file_name):
-#         """ MPIO driver and options """
-#         from mpi4py import MPI
+    def test_close_multiple_mpio_driver(self, mpi_file_name):
+        """ MPIO driver and options """
+        from mpi4py import MPI
 
-#         f = File(mpi_file_name, 'w', driver='mpio', comm=MPI.COMM_WORLD)
-#         f.create_group("test")
-#         f.close()
-#         f.close()
+        f = File(mpi_file_name, 'w', driver='mpio', comm=MPI.COMM_WORLD)
+        f.create_group("test")
+        f.close()
+        f.close()
 
 
-@ut.skipIf(h5py.version.hdf5_version_tuple < (1, 10, 1),
-           'Requires HDF5 1.10.1 or later')
 class TestSWMRMode(TestCase):
 
     """

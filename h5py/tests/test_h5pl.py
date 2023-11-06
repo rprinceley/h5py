@@ -9,7 +9,6 @@
 
 import pytest
 
-import h5py
 from h5py import h5pl
 from h5py.tests.common import insubprocess, subproc_env
 
