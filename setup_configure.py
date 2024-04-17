@@ -255,8 +255,8 @@ class HDF5LibWrapper:
             default_path = 'cyghdf5-200.dll'
             regexp = re.compile(r'^cyghdf5-\d+.dll$')
         else:
-            default_path = 'libhdf5.so'
-            regexp = re.compile(r'^libhdf5.so')
+            default_path = 'libhdf5_e.so'
+            regexp = re.compile(r'^libhdf5_e.so')
 
         path = None
         for d in libdirs:
