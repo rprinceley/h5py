@@ -14,7 +14,7 @@ jobs:
   steps:
     - task: UsePythonVersion@0
       inputs:
-        versionSpec: '3.8'
+        versionSpec: '3.9'
         architecture: 'x64'
     - script: |
         pip install tox
@@ -255,6 +255,7 @@ jobs:
 - job: 'macOS11'
   pool:
     vmImage: macOS-11
+  timeoutInMinutes: 70  # 60 is a little short for macOS sometimes
   strategy:
     matrix:
       # -deps : test with default (latest) versions of dependencies
