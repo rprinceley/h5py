@@ -129,8 +129,7 @@ class h5py_build_ext(build_ext):
         from Cython.Build import cythonize
         import numpy
 
-        complex256_support = hasattr(numpy, 'complex256') and \
-            os.environ.get('CIBW_ARCHS_MACOS') != 'arm64'
+        complex256_support = hasattr(numpy, 'complex256')
 
         # This allows ccache to recognise the files when pip builds in a temp
         # directory. It speeds up repeatedly running tests through tox with
@@ -143,20 +142,17 @@ class h5py_build_ext(build_ext):
         config = BuildConfig.from_env()
         config.summarise()
 
-        if config.hdf5_version < (1, 10, 4):
+        if config.hdf5_version < (1, 10, 6):
             raise Exception(
-                f"This version of h5py requires HDF5 >= 1.10.4 (got version "
+                f"This version of h5py requires HDF5 >= 1.10.6 (got version "
                 f"{config.hdf5_version} from environment variable or library)"
             )
 
-        defs_file = localpath('h5py', 'defs.pyx')
-        func_file = localpath('h5py', 'api_functions.txt')
         config_file = localpath('h5py', 'config.pxi')
 
-        # Rebuild low-level defs if missing or stale
-        if not op.isfile(defs_file) or os.stat(func_file).st_mtime > os.stat(defs_file).st_mtime:
-            print("Executing api_gen rebuild of defs")
-            api_gen.run()
+        # Refresh low-level defs if missing or stale
+        print("Executing api_gen rebuild of defs")
+        api_gen.run(config)
 
         # Rewrite config.pxi file if needed
         s = f"""\

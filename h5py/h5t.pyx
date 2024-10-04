@@ -28,9 +28,9 @@ from .utils cimport  emalloc, efree, require_tuple, convert_dims,\
 
 # Python imports
 import codecs
+import platform
 import sys
 from collections import namedtuple
-import sys
 import numpy as np
 from .h5 import get_config
 
@@ -38,7 +38,10 @@ from ._objects import phil, with_phil
 
 cfg = get_config()
 
-DEF MACHINE = UNAME_MACHINE  # processor architecture, provided by Cython
+_UNAME_MACHINE = platform.uname()[4]
+_IS_PPC64 = _UNAME_MACHINE == "ppc64"
+_IS_PPC64LE = _UNAME_MACHINE == "ppc64le"
+
 cdef char* H5PY_PYTHON_OPAQUE_TAG = "PYTHON:OBJECT"
 
 # === Custom C API ============================================================
@@ -232,7 +235,10 @@ LDOUBLE_BE.set_order(H5T_ORDER_BE)
 LDOUBLE_BE.lock()
 
 IF HDF5_VERSION > (1, 14, 3):
-    NATIVE_FLOAT16 = lockid(H5T_NATIVE_FLOAT16)
+    if H5T_NATIVE_FLOAT16 != H5I_INVALID_HID:
+        NATIVE_FLOAT16 = lockid(H5T_NATIVE_FLOAT16)
+    else:
+        NATIVE_FLOAT16 = H5I_INVALID_HID
 
 # Unix time types
 UNIX_D32LE = lockid(H5T_UNIX_D32LE)
@@ -288,12 +294,12 @@ cdef (int, int, int) _correct_float_info(ftype_, finfo):
     maxexp = finfo.maxexp
     minexp = finfo.minexp
     # workaround for numpy's buggy finfo on float128 on ppc64 archs
-    if ftype_ == np.longdouble and MACHINE == 'ppc64':
+    if ftype_ == np.longdouble and _IS_PPC64:
         # values reported by hdf5
         nmant = 116
         maxexp = 1024
         minexp = -1022
-    elif ftype_ == np.longdouble and MACHINE == 'ppc64le':
+    elif ftype_ == np.longdouble and _IS_PPC64LE:
         # values reported by hdf5
         nmant = 52
         maxexp = 1024
@@ -432,12 +438,12 @@ cdef class TypeID(ObjectID):
             return cpy
 
 
-    property dtype:
+    @property
+    def dtype(self):
         """ A Numpy-style dtype object representing this object.
         """
-        def __get__(self):
-            with phil:
-                return self.py_dtype()
+        with phil:
+            return self.py_dtype()
 
 
     cdef object py_dtype(self):

@@ -14,6 +14,8 @@
 
 include "config.pxi"
 
+import sys
+
 # C-level imports
 from ._objects cimport pdefault
 from .utils cimport emalloc, efree
@@ -24,6 +26,9 @@ from ._errors cimport set_error_handler, err_cookie
 
 # Python level imports
 from ._objects import phil, with_phil
+
+
+_IS_WINDOWS = sys.platform.startswith("win")
 
 # === Public constants and data structures ====================================
 
@@ -58,24 +63,29 @@ cdef class GroupStat:
     """
     cdef H5G_stat_t infostruct
 
-    property fileno:
-        def __get__(self):
-            return (self.infostruct.fileno[0], self.infostruct.fileno[1])
-    property objno:
-        def __get__(self):
-            return (self.infostruct.objno[0], self.infostruct.objno[1])
-    property nlink:
-        def __get__(self):
-            return self.infostruct.nlink
-    property type:
-        def __get__(self):
-            return self.infostruct.type
-    property mtime:
-        def __get__(self):
-            return self.infostruct.mtime
-    property linklen:
-        def __get__(self):
-            return self.infostruct.linklen
+    @property
+    def fileno(self):
+        return (self.infostruct.fileno[0], self.infostruct.fileno[1])
+
+    @property
+    def objno(self):
+        return (self.infostruct.objno[0], self.infostruct.objno[1])
+
+    @property
+    def nlink(self):
+        return self.infostruct.nlink
+
+    @property
+    def type(self):
+        return self.infostruct.type
+
+    @property
+    def mtime(self):
+        return self.infostruct.mtime
+
+    @property
+    def linklen(self):
+        return self.infostruct.linklen
 
     def _hash(self):
         return hash((self.fileno, self.objno, self.nlink, self.type, self.mtime, self.linklen))
@@ -389,9 +399,9 @@ cdef class GroupID(ObjectID):
         if statbuf.type != H5G_LINK:
             raise ValueError('"%s" is not a symbolic link.' % name)
 
-        IF UNAME_SYSNAME == "Windows":
+        if _IS_WINDOWS:
             linklen = 2049  # Windows statbuf.linklen seems broken
-        ELSE:
+        else:
             linklen = statbuf.linklen+1
         value = <char*>emalloc(sizeof(char)*linklen)
         try:

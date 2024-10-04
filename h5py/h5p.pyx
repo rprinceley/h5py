@@ -986,10 +986,10 @@ cdef class PropFAID(PropInstanceID):
         Set the file-close degree, which determines library behavior when
         a file is closed when objects are still open.  Legal values:
 
+        * h5f.CLOSE_DEFAULT
         * h5f.CLOSE_WEAK
         * h5f.CLOSE_SEMI
         * h5f.CLOSE_STRONG
-        * h5f.CLOSE_DEFAULT
         """
         H5Pset_fclose_degree(self.id, <H5F_close_degree_t>close_degree)
 
@@ -1001,10 +1001,10 @@ cdef class PropFAID(PropInstanceID):
         Get the file-close degree, which determines library behavior when
         a file is closed when objects are still open.  Legal values:
 
+        * h5f.CLOSE_DEFAULT
         * h5f.CLOSE_WEAK
         * h5f.CLOSE_SEMI
         * h5f.CLOSE_STRONG
-        * h5f.CLOSE_DEFAULT
         """
         cdef H5F_close_degree_t deg
         H5Pget_fclose_degree(self.id, &deg)
@@ -1321,8 +1321,8 @@ cdef class PropFAID(PropInstanceID):
         Set the compatibility level for file format. Legal values are:
 
         - h5f.LIBVER_EARLIEST
-        - h5f.LIBVER_V18 (HDF5 1.10.2 or later)
-        - h5f.LIBVER_V110 (HDF5 1.10.2 or later)
+        - h5f.LIBVER_V18
+        - h5f.LIBVER_V110
         - h5f.LIBVER_V112 (HDF5 1.11.4 or later)
         - h5f.LIBVER_V114 (HDF5 1.13.0 or later)
         - h5f.LIBVER_LATEST
@@ -1354,8 +1354,8 @@ cdef class PropFAID(PropInstanceID):
         Get the compatibility level for file format. Returned values are from:
 
         - h5f.LIBVER_EARLIEST
-        - h5f.LIBVER_V18 (HDF5 1.10.2 or later)
-        - h5f.LIBVER_V110 (HDF5 1.10.2 or later)
+        - h5f.LIBVER_V18
+        - h5f.LIBVER_V110
         - h5f.LIBVER_V112 (HDF5 1.11.4 or later)
         - h5f.LIBVER_V114 (HDF5 1.13.0 or later)
         - h5f.LIBVER_LATEST
