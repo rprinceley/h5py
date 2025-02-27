@@ -214,6 +214,10 @@ axes using ``None``::
 
     >>> dset = f.create_dataset("unlimited", (10, 10), maxshape=(None, 10))
 
+For a 1D dataset, ``maxshape`` can be an integer instead of a tuple. But to make an
+unlimited 1D dataset, ``maxshape`` must be a tuple ``(None,)``. Passing ``None`` gives
+the default behaviour, where the initial size is also the maximum.
+
 .. note:: Resizing an array with existing data works differently than in NumPy; if
     any axis shrinks, the data in the missing region is discarded.  Data does
     not "rearrange" itself as it does when resizing a NumPy array.
@@ -272,10 +276,10 @@ The ``compression_opts`` parameter will then be passed to this filter.
      A Python package of several popular filters, including Blosc, LZ4 and ZFP,
      for convenient use with h5py
 
-   `HDF5 Filter Plugins <https://portal.hdfgroup.org/display/support/HDF5+Filter+Plugins>`_
+   `HDF5 Filter Plugins <https://github.com/HDFGroup/hdf5_plugins/releases>`_
      A collection of filters as a single download from The HDF Group
 
-   `Registered filter plugins <https://portal.hdfgroup.org/display/support/Filters>`_
+   `Registered filter plugins <https://github.com/HDFGroup/hdf5_plugins/blob/master/docs/RegisteredFilterPlugins.md>`_
      The index of publicly announced filter plugins
 
 .. note:: The underlying implementation of the compression filter will have the
@@ -345,7 +349,7 @@ A MultiBlockSlice can be used in place of a slice to select a number of (count)
 blocks of multiple elements separated by a stride, rather than a set of single
 elements separated by a step.
 
-For an explanation of how this slicing works, see the `HDF5 documentation <https://support.hdfgroup.org/HDF5/Tutor/selectsimple.html>`_.
+For an explanation of how this slicing works, see the `HDF5 documentation <https://support.hdfgroup.org/documentation/hdf5/latest/_l_b_dset_sub_r_w.html>`_.
 
 For example::
 

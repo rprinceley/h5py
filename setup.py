@@ -20,7 +20,7 @@ if '' not in sys.path:
 import setup_build, setup_configure
 
 
-VERSION = '3.12.1'
+VERSION = '3.13.0'
 
 
 # these are required to use h5py
@@ -48,7 +48,8 @@ if setup_configure.mpi_enabled():
     RUN_REQUIRES.append('mpi4py >=3.1.1')
     SETUP_REQUIRES.append("mpi4py ==3.1.1; python_version<'3.11'")
     SETUP_REQUIRES.append("mpi4py ==3.1.4; python_version=='3.11.*'")
-    SETUP_REQUIRES.append("mpi4py ==3.1.6; python_version>='3.12'")
+    SETUP_REQUIRES.append("mpi4py ==3.1.6; python_version=='3.12.*'")
+    SETUP_REQUIRES.append("mpi4py ==4.0.1; python_version>='3.13'")
 
 # Set the environment variable H5PY_SETUP_REQUIRES=0 if we need to skip
 # setup_requires for any reason.
