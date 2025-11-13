@@ -199,6 +199,7 @@ cdef extern from "hdf5.h":
   hid_t H5FD_SEC2
   hid_t H5FD_DIRECT
   hid_t H5FD_STDIO
+  hid_t H5FD_VSIL
   ### {{if PLATFORM_SYSTEM == "Windows"}}
   hid_t H5FD_WINDOWS
   ### {{endif}}
