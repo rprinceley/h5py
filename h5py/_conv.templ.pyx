@@ -1,5 +1,4 @@
 # cython: profile=False
-# cython: language_level=3
 # This file is part of h5py, a Python interface to the HDF5 library.
 #
 # http://www.h5py.org
@@ -12,7 +11,6 @@
 """
     Low-level type-conversion routines.
 """
-include "config.pxi"
 
 from logging import getLogger
 
@@ -417,10 +415,11 @@ cdef inline int conv_pyref2regref(void* ipt, void* opt, void* bkg, void* priv) e
         if not isinstance(obj, RegionReference):
             raise TypeError("Can't convert incompatible object to HDF5 region reference")
         ref = <RegionReference>(buf_obj0)
-        IF HDF5_VERSION >= (1, 12, 0):
-            memcpy(buf_ref, ref.ref.reg_ref.data, sizeof(hdset_reg_ref_t))
-        ELSE:
-            memcpy(buf_ref, ref.ref.reg_ref, sizeof(hdset_reg_ref_t))
+        ### {{if HDF5_VERSION >= (1, 12, 0)}}
+        memcpy(buf_ref, ref.ref.reg_ref.data, sizeof(hdset_reg_ref_t))
+        ### {{else}}
+        memcpy(buf_ref, ref.ref.reg_ref, sizeof(hdset_reg_ref_t))
+        ### {{endif}}
     else:
         memset(buf_ref, c'\0', sizeof(hdset_reg_ref_t))
 
@@ -738,8 +737,11 @@ cdef int conv_vlen2ndarray(void* ipt,
         # which can't be used with SimpleNewFromData.
         # Cython doesn't expose NumPy C-API functions
         # like NewFromDescr, so we'll construct this with a Python function.
-        buf = <char[:itemsize * size]> data
-        ndarray = np.frombuffer(buf, dtype=elem_dtype)
+        if size != 0:
+            buf = <char[:itemsize * size]> data
+            ndarray = np.frombuffer(buf, dtype=elem_dtype)
+        else:
+            ndarray = np.empty(0, dtype=elem_dtype)
     else:
         # Compound dtypes containing object fields: frombuffer() refuses these,
         # so we'll fall back to allocating a new array and copying the data in.

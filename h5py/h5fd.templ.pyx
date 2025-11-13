@@ -10,8 +10,6 @@
 # This file contains code or comments from the HDF5 library.  See the file
 # licenses/hdf5.txt for the full HDF5 software license.
 
-include "config.pxi"
-
 """
     File driver constants (H5FD*).
 """
@@ -45,10 +43,11 @@ DIRECT = H5FD_DIRECT
 VSIL = H5FD_VSIL
 STDIO = H5FD_STDIO
 ROS3D = H5FD_ROS3
-IF UNAME_SYSNAME == "Windows":
-    WINDOWS = H5FD_WINDOWS
-ELSE:
-    WINDOWS = -1
+### {{if PLATFORM_SYSTEM == "Windows"}}
+WINDOWS = H5FD_WINDOWS
+### {{else}}
+WINDOWS = -1
+### {{endif}}
 
 # === Logging driver ==========================================================
 
@@ -232,7 +231,9 @@ info.fl_map = [H5FD_MEM_SUPER,  # default
                H5FD_MEM_SUPER,  # lheap
                H5FD_MEM_SUPER   # ohdr
 	       ]
-IF HDF5_VERSION >= (1, 14, 0):
-    info.version = H5FD_CLASS_VERSION
+
+### {{if HDF5_VERSION >= (1, 14, 0)}}
+info.version = H5FD_CLASS_VERSION
+### {{endif}}
 
 fileobj_driver = H5FDregister(&info)

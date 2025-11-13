@@ -19,8 +19,12 @@ steps:
 - task: UsePythonVersion@0
   inputs:
     versionSpec: '$(python.version)'
-    architecture: 'x64'
-  displayName: 'Use Python $(python.version)'
+    architecture: '$(python.architecture)'
+    allowUnstable: true
+    # GH 'classic' PAT token, set as a secret variable in Azure pipeline config.
+    # Max validity 1 year. Used for Python builds not already installed on Azure.
+    githubToken: '$(githubToken)'  # Last changed 2025-09-24
+  displayName: 'Use Python $(python.version) $(python.architecture)'
   condition: and(succeeded(), ne(variables['python.version'], 'Pre'))
 
   #- task: stevedower.python.InstallPython.InstallPython@1
@@ -75,8 +79,8 @@ steps:
       displayName: 'ensure HDF5'
 - ${{ if eq(parameters.shell, 'cmd') }}:
     - script: |
-        py -3.9 -m pip install requests
-        py -3.9 ci\\get_hdf5_win.py
+        py -3.10 -m pip install requests
+        py -3.10 ci\\get_hdf5_win.py
       displayName: 'ensure HDF5'
 
 - script: env
